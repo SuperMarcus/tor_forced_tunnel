@@ -1,0 +1,35 @@
+diff --git a/src/or/connection_edge.c b/src/or/connection_edge.c
+index 3ae5db9..402f4c9 100644
+--- a/src/or/connection_edge.c
++++ b/src/or/connection_edge.c
+@@ -2212,17 +2212,17 @@ destination_from_pf(entry_connection_t *conn, socks_request_t *req)
+     struct sockaddr_in *sin = (struct sockaddr_in *)proxy_sa;
+     pnl.af              = AF_INET;
+     pnl.saddr.v4.s_addr = tor_addr_to_ipv4n(&ENTRY_TO_CONN(conn)->addr);
+-    pnl.sport           = htons(ENTRY_TO_CONN(conn)->port);
++    pnl.sxport.port           = htons(ENTRY_TO_CONN(conn)->port);
+     pnl.daddr.v4.s_addr = sin->sin_addr.s_addr;
+-    pnl.dport           = sin->sin_port;
++    pnl.dxport.port           = sin->sin_port;
+   } else if (proxy_sa->sa_family == AF_INET6) {
+     struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)proxy_sa;
+     pnl.af = AF_INET6;
+     memcpy(&pnl.saddr.v6, tor_addr_to_in6(&ENTRY_TO_CONN(conn)->addr),
+            sizeof(struct in6_addr));
+-    pnl.sport = htons(ENTRY_TO_CONN(conn)->port);
++    pnl.sxport.port = htons(ENTRY_TO_CONN(conn)->port);
+     memcpy(&pnl.daddr.v6, &sin6->sin6_addr, sizeof(struct in6_addr));
+-    pnl.dport = sin6->sin6_port;
++    pnl.dxport.port = sin6->sin6_port;
+   } else {
+     log_warn(LD_NET, "getsockname() gave an unexpected address family (%d)",
+              (int)proxy_sa->sa_family);
+@@ -2248,7 +2248,7 @@ destination_from_pf(entry_connection_t *conn, socks_request_t *req)
+   }
+ 
+   tor_addr_to_str(req->address, &addr, sizeof(req->address), 1);
+-  req->port = ntohs(pnl.rdport);
++  req->port = ntohs(pnl.rdxport.port);
+ 
+   return 0;
+ }

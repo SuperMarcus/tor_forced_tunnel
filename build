@@ -1,0 +1,67 @@
+#!/bin/sh
+
+SRC_URL="https://www.torproject.org/dist/tor-0.3.4.9.tar.gz"
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+BUILD_DIR="$DIR/build_dir"
+BIN_OUT_DIR="$BUILD_DIR/tor"
+LOGFILE="$BUILD_DIR/build.log"
+INCLUDE_DIR="$DIR/include"
+
+
+pushd "$DIR"
+FTT_VERSION=`git rev-parse --short HEAD`
+
+cat <<EOF
+
+Forced Tor Tunnel - Commit $FTT_VERSION
+
+Copyright (c) 2018 Marcus Zhou<other.marcus@icloud.com>
+All rights reserved.
+
+macOS build script with transparent proxy support.
+
+This is an experimental program written for educational
+purposes.
+
+Before running this script, make sure you have openssl,
+zlib, and libevent is installed.
+
+(Run 'brew install openssl zlib libevent')
+
+EOF
+
+rm -rf "$BUILD_DIR"
+mkdir "$BUILD_DIR"
+
+pushd "$BUILD_DIR"
+
+echo "[*] Downloaing $SRC_URL..."
+
+curl -L "$SRC_URL" > source.tar.gz
+tar -xzvf source.tar.gz >> "$LOGFILE" 2>&1 0>&1
+
+pushd tor-*
+
+echo "[*] Applying patches..."
+
+for patch in $DIR/patch/*.patch ; do
+patch -p1 < "$patch"
+done
+
+echo "[*] Configuring..."
+
+./configure --prefix=$BIN_OUT_DIR CFLAGS="-DPF -DPRIVATE -I$INCLUDE_DIR" --with-openssl-dir --with-libevent-dir --with-zlib-dir --disable-system-torrc >> "$LOGFILE" 2>&1 0>&1
+
+echo "[*] Compiling..."
+
+make >> "$LOGFILE" 2>&1 0>&1
+
+echo "[*] Exporting binary to '$BIN_OUT_DIR'..."
+
+make install >> "$LOGFILE" 2>&1 0>&1
+
+popd #tor-*
+popd #BUILD_DIR
+popd #DIR
+
+echo "[*] Done. Now use './start <target ip>' to start the proxy."

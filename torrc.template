@@ -1,0 +1,8 @@
+VirtualAddrNetworkIPv4 10.192.0.0/10
+AutomapHostsOnResolve 1
+TransPort 19080 IsolateClientAddr IsolateClientProtocol IsolateDestAddr IsolateDestPort
+TransProxyType default
+DNSPort 19053
+HardwareAccel 1
+AvoidDiskWrites 1
+DataDirectory ${data_dir}

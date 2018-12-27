@@ -1,0 +1,109 @@
+#!/bin/sh
+
+ARPSPOOF_BIN=~/Documents/build/arpspoof/arpspoof
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+TOR_BIN="$DIR/build_dir/tor/bin/tor"
+LOGFILE="$DIR/runtime.log"
+RUNNING=true
+
+pushd "$DIR"
+FTT_VERSION=`git rev-parse --short HEAD`
+
+cat <<EOF
+
+Forced Tor Tunnel - Commit $FTT_VERSION
+
+Copyright (c) 2018 Marcus Zhou<other.marcus@icloud.com>
+All rights reserved.
+
+This program works by redirecting traffics from
+target device into a tor transparent proxy, and blocks
+traffics from the original gateway to target device.
+
+This is an experimental program written for educational
+purposes.
+
+This program is not meant to be a security measure
+of any kind, rather a quick and temporary way to bypass
+some network filters or checkpoints.
+
+EOF
+
+TARGET="$1"
+GATEWAY="$2"
+
+if [[ "$TARGET" == "" ]] ; then
+cat <<EOF
+
+Usage: $0 <target> [gateway]
+
+EOF
+exit 1
+fi
+
+if [[ "$GATEWAY" == "" ]] ; then
+GATEWAY=`route -n get default | awk '/gateway/ {print $2}'`
+fi
+
+echo "[*] Target is $TARGET"
+echo "[*] Gateway is $GATEWAY"
+echo "[*] Source directory is '$DIR'"
+
+echo "[*] Requesting permissions..."
+
+sudo true || exit 1
+
+if [[ -f "$ARPSPOOF_BIN" ]] ; then
+
+echo "[*] Initiating arp requests..."
+
+sudo "$ARPSPOOF_BIN" -t "$TARGET" "$GATEWAY" >> "$LOGFILE" 2>&1 0>&1 &
+ARPSPOOF_PID1=$!
+
+sudo "$ARPSPOOF_BIN" -t "$GATEWAY" "$TARGET" >> "$LOGFILE" 2>&1 0>&1 &
+ARPSPOOF_PID2=$!
+
+fi
+
+echo "[*] Starting tor transparent proxy..."
+
+sed "s@\${data_dir}@$DIR/data@" "$DIR/torrc.template" > "$DIR/torrc"
+sudo "$TOR_BIN" -f "$DIR/torrc" >> "$LOGFILE" 2>&1 0>&1 &
+TOR_PID=$!
+
+kill_and_wait(){
+while sudo kill -0 $1 > /dev/null 2>&1 0>&1 ; do
+echo "[*] Waiting for pid $1 to quit..."
+sleep 1
+done
+}
+
+logout(){
+echo "[!] Trapped CTRL-C"
+echo "[*] Cleanning up..."
+
+if [[ -f "$ARPSPOOF_BIN" ]] ; then
+
+echo "[*] Sending signals to arp process 1..."
+kill_and_wait $ARPSPOOF_PID1
+
+echo "[*] Sending signals to arp process 2..."
+kill_and_wait $ARPSPOOF_PID2
+
+fi
+
+echo "[*] Sending signals to tor transparent proxy..."
+kill_and_wait $TOR_PID
+rm -f torrc
+
+RUNNING=false
+echo "[*] Done."
+}
+
+trap logout SIGINT
+
+while $RUNNING ; do
+sleep 1
+done
+
+popd #DIR
