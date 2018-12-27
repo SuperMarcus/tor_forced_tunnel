@@ -41,6 +41,12 @@ EOF
 exit 1
 fi
 
+if [[ "$TARGET" == *.local ]] ; then
+echo "[*] Resolving host '$TARGET'..."
+TARGET=`arp "$TARGET"` || exit 1
+TARGET=`echo "$TARGET" | sed -n 's/.*[(]\([0-9\.]*\)[)].*/\1/p'`
+fi
+
 if [[ "$GATEWAY" == "" ]] ; then
 GATEWAY=`route -n get default | awk '/gateway/ {print $2}'`
 fi
