@@ -1,0 +1,24 @@
+#!/bin/sh
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+pushd "$DIR"
+FTT_VERSION=`git rev-parse --short HEAD`
+
+cat <<EOF
+
+Forced Tor Tunnel - Commit $FTT_VERSION
+
+Copyright (c) 2018 Marcus Zhou<other.marcus@icloud.com>
+All rights reserved.
+
+Prepare the system and firewall for transparent proxy.
+
+EOF
+
+echo "[*] Loading pf rulesets for transparent proxy..."
+sudo pfctl -f "pf.conf"
+
+echo "[*] Enabling system packet forwarding..."
+sudo sysctl -w net.inet.ip.forwarding=1
+
+popd # $DIR
